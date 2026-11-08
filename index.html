@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#121016">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Locker">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Locker</title>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<style>
+:root{
+  --ink:#121016; --ink2:#1b1721; --ink3:#26202e; --line:#2f2938;
+  --silver:#e9e6ef; --dim:#9a93a8; --faint:#6c6579;
+  --accent:#ff4d6d; --accent-ink:#2a0a12;
+  --danger:#ff5b5b; --ok:#5fd39a;
+  --top:env(safe-area-inset-top,0px); --bot:env(safe-area-inset-bottom,0px);
+}
+body.v-family{--accent:#f2b84b;--accent-ink:#2b1d00}
+body.v-other{--accent:#6ec6ff;--accent-ink:#06202f}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--ink);color:var(--silver);overflow:hidden;
+  font-family:"Noto Sans Devanagari","Mukta","Hind",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.45;overscroll-behavior:none}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hide{display:none!important}
+.view{position:fixed;inset:0;display:flex;flex-direction:column}
+body.curtain #home,body.curtain #viewer{filter:blur(24px) brightness(.5)}
+
+/* ---------- lock + setup ---------- */
+#lock{align-items:center;justify-content:center;padding:calc(24px + var(--top)) 24px calc(24px + var(--bot));text-align:left}
+.lockbox{width:100%;max-width:340px}
+.logo{width:84px;height:84px;display:block;margin:0 0 22px}
+.logo .blade{transform-origin:50px 50px;transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+.lockbox h1{font-size:26px;font-weight:700;letter-spacing:-.2px}
+.lockbox p.sub{color:var(--dim);font-size:14.5px;margin:4px 0 22px;max-width:30ch}
+.pw{width:100%;background:var(--ink2);border:1.5px solid var(--line);border-radius:14px;padding:15px 16px;font-size:19px;letter-spacing:.14em;margin-bottom:10px}
+.pw::placeholder{letter-spacing:0;color:var(--faint);font-size:16px}
+.pw:focus{outline:none;border-color:var(--accent)}
+.btn{display:block;width:100%;padding:14px;border-radius:14px;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:17px}
+.btn:disabled{opacity:.5}
+.btn.ghost{background:transparent;color:var(--dim);font-weight:600;font-size:14.5px;padding:12px}
+.msg{min-height:22px;font-size:14px;color:var(--danger);margin:2px 0 8px}
+.rec{background:var(--ink2);border:1.5px dashed var(--line);border-radius:14px;padding:14px;margin:10px 0;word-break:break-all;font-weight:700;letter-spacing:.12em;font-size:15.5px}
+.rec small{display:block;font-weight:400;letter-spacing:0;color:var(--dim);margin-bottom:4px}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:var(--silver);margin:12px 0}
+.chk input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent)}
+.steps{color:var(--faint);font-size:13px;margin-bottom:10px}
+
+/* ---------- home ---------- */
+#home{background:var(--ink)}
+#home.reveal{animation:iris .75s cubic-bezier(.3,.7,.2,1) both}
+@keyframes iris{from{clip-path:circle(0% at 50% 38%)}to{clip-path:circle(150% at 50% 38%)}}
+@media (prefers-reduced-motion:reduce){#home.reveal{animation:none}}
+.top{padding:calc(12px + var(--top)) 16px 8px;display:flex;align-items:center;gap:8px}
+.top h2{font-size:22px;font-weight:700;letter-spacing:-.2px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top h2 i{font-style:normal;margin-right:6px}
+.ib{width:42px;height:42px;border-radius:12px;background:var(--ink2);display:grid;place-items:center;font-size:19px;flex:none}
+.ib.panic{background:#3a1216;color:#ff7b7b}
+.searchrow{padding:0 16px 8px}
+.search{width:100%;background:var(--ink2);border:1.5px solid transparent;border-radius:12px;padding:11px 14px;font-size:15.5px}
+.search:focus{outline:none;border-color:var(--line)}
+.crumbs{padding:2px 16px 8px;font-size:13.5px;color:var(--dim);display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.crumbs button{color:var(--dim);padding:2px 0}.crumbs button.cur{color:var(--silver);font-weight:700}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 0 calc(110px + var(--bot))}
+.rolls{display:flex;gap:8px;overflow-x:auto;padding:2px 16px 12px;scrollbar-width:none}
+.rolls::-webkit-scrollbar{display:none}
+.roll{flex:none;min-width:112px;background:var(--ink2);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;text-align:left}
+.roll b{display:block;font-size:15px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roll span{font-size:12.5px;color:var(--dim)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;padding:0 3px}
+@media (min-width:560px){.grid{grid-template-columns:repeat(5,1fr)}}
+@media (min-width:900px){.grid{grid-template-columns:repeat(8,1fr)}}
+.tile{position:relative;aspect-ratio:1;background:var(--ink2);overflow:hidden;border-radius:3px}
+.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.tile .fr{position:absolute;left:5px;bottom:3px;font-size:10.5px;font-weight:700;color:#fff;text-shadow:0 1px 3px #000;opacity:.8;font-variant-numeric:tabular-nums}
+.tile .ph{position:absolute;inset:0;display:grid;place-items:center;font-size:26px;color:var(--faint)}
+.tile .tick{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.35);display:none}
+.sel .tile .tick{display:block}
+.tile.on{outline:3px solid var(--accent);outline-offset:-3px}
+.tile.on .tick{background:var(--accent);border-color:var(--accent)}
+.empty{padding:56px 28px;color:var(--dim);text-align:left;max-width:34ch}
+.empty b{display:block;color:var(--silver);font-size:18px;margin-bottom:4px}
+.fab{position:fixed;right:18px;bottom:calc(78px + var(--bot));width:58px;height:58px;border-radius:18px;background:var(--accent);color:var(--accent-ink);font-size:30px;font-weight:700;display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:5}
+.nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--ink2);border-top:1px solid var(--line);padding:6px 6px calc(6px + var(--bot));z-index:4}
+.nav button{flex:1;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:11.5px;color:var(--dim);font-weight:600}
+.nav button span{font-size:21px;line-height:1.2}
+.nav button.on{color:var(--accent)}
+.selbar{position:fixed;left:0;right:0;top:0;background:var(--ink3);padding:calc(10px + var(--top)) 12px 10px;display:flex;align-items:center;gap:6px;z-index:8}
+.selbar b{flex:1;font-size:16px}
+.selbar button{padding:9px 12px;border-radius:10px;background:var(--ink2);font-size:14.5px;font-weight:600}
+.selbar button.d{color:var(--danger)}
+.pbar{position:fixed;left:0;right:0;top:0;height:4px;background:var(--accent);transform-origin:left;transform:scaleX(0);z-index:30;transition:transform .2s}
+
+/* ---------- viewer ---------- */
+#viewer{background:#000;z-index:20}
+#viewer .vt{display:flex;align-items:center;gap:8px;padding:calc(10px + var(--top)) 12px 8px;color:#fff;position:absolute;left:0;right:0;top:0;background:linear-gradient(#000a,#0000);z-index:2}
+#viewer .vt b{flex:1;font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#viewer .vt button,#viewer .vb button{width:44px;height:44px;border-radius:12px;font-size:20px;background:#ffffff1a}
+#viewer .vb{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-around;padding:10px 12px calc(12px + var(--bot));background:linear-gradient(#0000,#000a);z-index:2}
+#vstage{flex:1;display:grid;place-items:center;overflow:auto;touch-action:pan-x pan-y pinch-zoom}
+#vstage img{max-width:100%;max-height:100%;object-fit:contain;transition:transform .2s}
+#vstage img.z{max-width:none;max-height:none;width:200%}
+.vc{position:absolute;bottom:calc(70px + var(--bot));left:0;right:0;text-align:center;color:#ffffffaa;font-size:13px;z-index:2}
+
+/* ---------- sheets & dialog ---------- */
+.shade{position:fixed;inset:0;background:#000a;z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--ink2);border-radius:22px 22px 0 0;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;padding:18px 18px calc(18px + var(--bot))}
+@media (min-width:600px){.shade{align-items:center}.sheet{border-radius:22px}}
+.sheet h3{font-size:19px;margin-bottom:12px}
+.row{display:flex;align-items:center;gap:12px;padding:13px 2px;border-bottom:1px solid var(--line)}
+.row:last-child{border:none}
+.row .t{flex:1;min-width:0}.row .t b{display:block;font-weight:600;font-size:15.5px}.row .t small{color:var(--dim);font-size:13px;display:block}
+.sw{appearance:none;width:46px;height:28px;border-radius:14px;background:var(--ink3);position:relative;flex:none;cursor:pointer;transition:.2s}
+.sw::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s}
+.sw:checked{background:var(--accent)}.sw:checked::after{left:21px}
+select.sel{background:var(--ink3);border:none;border-radius:10px;padding:8px 10px;font-size:14.5px}
+.opt{display:flex;gap:14px;align-items:center;width:100%;padding:14px 4px;font-size:16.5px;text-align:left;border-bottom:1px solid var(--line)}
+.opt:last-child{border:none}.opt span{font-size:22px}
+.dlgin{width:100%;background:var(--ink3);border:1.5px solid var(--line);border-radius:12px;padding:13px;font-size:17px;margin:6px 0 14px}
+.dlgin:focus{outline:none;border-color:var(--accent)}
+.dlgbtn{display:flex;gap:10px}.dlgbtn button{flex:1;padding:13px;border-radius:12px;background:var(--ink3);font-weight:700}
+.dlgbtn button.p{background:var(--accent);color:var(--accent-ink)}.dlgbtn button.d{background:var(--danger);color:#2a0000}
+.toast{position:fixed;left:50%;bottom:calc(150px + var(--bot));transform:translateX(-50%);background:#fff;color:#111;padding:10px 16px;border-radius:12px;font-size:14.5px;font-weight:600;z-index:60;max-width:88vw;text-align:center}
+
+/* ---------- calculator (panic screen) ---------- */
+#calc{background:#000;justify-content:flex-end;padding:20px 14px calc(24px + var(--bot));z-index:90}
+#calc .disp{color:#fff;font-size:68px;text-align:right;padding:10px 8px;font-weight:300;overflow:hidden;white-space:nowrap}
+#calc .keys{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+#calc .keys button{aspect-ratio:1;border-radius:50%;background:#333;color:#fff;font-size:30px}
+#calc .keys button.f{background:#a5a5a5;color:#000}#calc .keys button.o{background:#ff9f0a}
+#calc .keys button.z{grid-column:span 2;aspect-ratio:auto;border-radius:40px;text-align:left;padding-left:30px}
+</style>
+</head>
+<body>
+
+<!-- ================= LOCK / SETUP ================= -->
+<div id="lock" class="view">
+  <div class="lockbox" id="lockbox"></div>
+</div>
+
+<!-- ================= HOME ================= -->
+<div id="home" class="view hide">
+  <div class="top">
+    <h2 id="vname"></h2>
+    <button class="ib" id="cloudbtn" onclick="cloudTap()" aria-label="Cloud" title="Cloud">☁️</button>
+    <button class="ib" onclick="lockNow('manual')" aria-label="लॉक करो" title="लॉक करो">🔒</button>
+    <button class="ib panic" onclick="panic()" aria-label="Panic" title="तुरंत छुपाओ">⏻</button>
+  </div>
+  <div class="searchrow"><input id="q" class="search" type="search" placeholder="नाम से खोजो" oninput="renderGrid()"></div>
+  <div class="crumbs" id="crumbs"></div>
+  <div class="scroll" id="scroll">
+    <div class="rolls" id="rolls"></div>
+    <div id="gridwrap"></div>
+  </div>
+  <button class="fab" id="fab" onclick="addMenu()" aria-label="जोड़ो">＋</button>
+  <div class="nav">
+    <button id="nv-photos" class="on" onclick="goTab('photos')"><span>🖼️</span>फ़ोटो</button>
+    <button id="nv-trash" onclick="goTab('trash')"><span>🗑️</span>Trash</button>
+    <button onclick="openSettings()"><span>⚙️</span>Settings</button>
+  </div>
+  <div class="selbar hide" id="selbar">
+    <button onclick="clearSel()" aria-label="रद्द">✕</button><b id="selcount"></b>
+    <button onclick="selMove()" id="sb-move">📁 भेजो</button>
+    <button onclick="selDownload()" id="sb-dl">⬇️</button>
+    <button class="d" onclick="selDelete()" id="sb-del">🗑️</button>
+    <button onclick="selRestore()" id="sb-res" class="hide">↩️ वापस</button>
+  </div>
+</div>
+
+<!-- ================= VIEWER ================= -->
+<div id="viewer" class="view hide">
+  <div class="vt"><button onclick="closeViewer()" aria-label="बंद">✕</button><b id="vtitle"></b><button onclick="viewerInfo()" aria-label="जानकारी">ⓘ</button></div>
+  <div id="vstage"></div>
+  <div class="vc" id="vcount"></div>
+  <div class="vb">
+    <button onclick="viewerStep(-1)" aria-label="पिछली">◀</button>
+    <button onclick="viewerDownload()" aria-label="Download">⬇️</button>
+    <button onclick="viewerRename()" aria-label="नाम बदलो">✏️</button>
+    <button onclick="viewerDelete()" aria-label="हटाओ">🗑️</button>
+    <button onclick="viewerStep(1)" aria-label="अगली">▶</button>
+  </div>
+</div>
+
+<!-- ================= CALCULATOR ================= -->
+<div id="calc" class="view hide">
+  <div class="disp" id="cdisp">0</div>
+  <div class="keys" id="ckeys"></div>
+</div>
+
+<div class="pbar" id="pbar"></div>
+<div id="overlay"></div>
+
+<script>
+"use strict";
+/* =====================================================================
+   Locker — encrypted photo vaults (v1, on-device)
+   Every vault has its own password. Password -> AES key (PBKDF2) -> unwraps a random master key.
+   Photos, thumbnails and names are all AES-GCM encrypted before they touch the disk.
+===================================================================== */
+const $ = id => document.getElementById(id);
+const te = new TextEncoder(), td = new TextDecoder();
+const ITER = 200000;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = () => Array.from(crypto.getRandomValues(new Uint8Array(9)), b => b.toString(36).padStart(2, "0")).join("");
+const fmtSize = n => n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------------- settings (not secret) ---------------- */
+const DEF = { shake: true, shakePower: 14, hidden: true, facedown: true, curtain: true, back: true, twofinger: false, autolock: 60, quality: "balanced" };
+let SET = Object.assign({}, DEF);
+try{ SET = Object.assign({}, DEF, JSON.parse(localStorage.getItem("lk_set") || "{}")); }catch(e){}
+function saveSet(){ try{ localStorage.setItem("lk_set", JSON.stringify(SET)); }catch(e){} }
+
+/* ---------------- IndexedDB ---------------- */
+const dbp = new Promise((res, rej) => {
+  const r = indexedDB.open("lockerDB", 2);
+  r.onupgradeneeded = e => {
+    const d = r.result;
+    if(e.oldVersion < 1){
+      d.createObjectStore("vaults", { keyPath: "id" });
+      d.createObjectStore("folders", { keyPath: "id" }).createIndex("v", "vaultId");
+      d.createObjectStore("items", { keyPath: "id" }).createIndex("v", "vaultId");
+      d.createObjectStore("thumbs", { keyPath: "id" });
+      d.createObjectStore("blobs", { keyPath: "id" });
+    }
+    if(e.oldVersion < 2){
+      d.createObjectStore("sync", { keyPath: "name" });     // cloud file map: name -> drive id
+      d.createObjectStore("outbox", { keyPath: "name" });   // changes waiting to go to the cloud
+    }
+  };
+  r.onsuccess = () => res(r.result);
+  r.onerror = () => rej(r.error);
+});
+function idb(stores, mode, fn){
+  return dbp.then(db => new Promise((res, rej) => {
+    const t = db.transaction(stores, mode);
+    let out;
+    Promise.resolve(fn(t)).then(v => { out = v; }, rej);
+    t.oncomplete = () => res(out);
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error);
+  }));
+}
+const rq = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+const dbAll = (store, idx, key) => idb(store, "readonly", t => rq(idx ? t.objectStore(store).index(idx).getAll(key) : t.objectStore(store).getAll()));
+const dbGet = (store, id) => idb(store, "readonly", t => rq(t.objectStore(store).get(id)));
+const rawPut = (store, v) => idb(store, "readwrite", t => rq(t.objectStore(store).put(v)));
+const rawDel = (stores, id) => idb(stores, "readwrite", t => Promise.all([].concat(stores).map(s => rq(t.objectStore(s).delete(id)))));
+const PFX = { vaults: "v", folders: "f", items: "i", thumbs: "t", blobs: "b" };
+const dbPut = async (store, v) => { const r = await rawPut(store, v); queueOp(store, v.id, "put"); return r; };
+const dbDel = async (stores, id) => { await rawDel(stores, id); [].concat(stores).forEach(s => queueOp(s, id, "del")); };
+
+/* ---------------- crypto ---------------- */
+async function pbk(pass, salt, iter){
+  const base = await crypto.subtle.importKey("raw", te.encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: iter, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+async function aesEnc(key, data){ const iv = crypto.getRandomValues(new Uint8Array(12)); return { iv, ct: await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, data) }; }
+const aesDec = (key, o) => crypto.subtle.decrypt({ name: "AES-GCM", iv: o.iv }, key, o.ct);
+const encJSON = (key, obj) => aesEnc(key, te.encode(JSON.stringify(obj)));
+const decJSON = async (key, o) => JSON.parse(td.decode(await aesDec(key, o)));
+const importMaster = raw => crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
+const B32 = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function newRecKey(){ return Array.from(crypto.getRandomValues(new Uint8Array(25)), b => B32[b % 32]).join(""); }
+const fmtRec = k => k.match(/.{1,5}/g).join("-");
+const normRec = s => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+async function createVault(name, icon, accent, pass){
+  const raw = crypto.getRandomValues(new Uint8Array(32));
+  const salt = crypto.getRandomValues(new Uint8Array(16)), recSalt = crypto.getRandomValues(new Uint8Array(16));
+  const recKey = newRecKey();
+  const [pk, rk, master] = await Promise.all([pbk(pass, salt, ITER), pbk(recKey, recSalt, ITER), importMaster(raw)]);
+  const v = { id: uid(), salt, recSalt, iter: ITER,
+    wrapPw: await aesEnc(pk, raw), wrapRec: await aesEnc(rk, raw),
+    meta: await encJSON(master, { name, icon, accent }) };
+  await dbPut("vaults", v);
+  return { vault: v, recKey: fmtRec(recKey) };
+}
+async function openWith(v, kind, secret){
+  const key = await pbk(kind === "rec" ? normRec(secret) : secret, kind === "rec" ? v.recSalt : v.salt, v.iter);
+  const raw = new Uint8Array(await aesDec(key, kind === "rec" ? v.wrapRec : v.wrapPw));
+  const master = await importMaster(raw);
+  const meta = await decJSON(master, v.meta);
+  return { vault: v, raw, key: master, meta };
+}
+async function tryUnlock(secret, kind){
+  const vaults = await dbAll("vaults");
+  for(const v of vaults){
+    try{ return await openWith(v, kind || "pw", secret); }catch(e){}
+  }
+  return null;
+}
+async function rewrap(sess, newPass){
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const pk = await pbk(newPass, salt, ITER);
+  const v = Object.assign({}, sess.vault, { salt, iter: ITER, wrapPw: await aesEnc(pk, sess.raw) });
+  await dbPut("vaults", v); sess.vault = v;
+}
+
+/* ---------------- state ---------------- */
+let S = null;              // session {vault, raw, key, meta}
+let folders = [], items = [];
+let path = [];             // folder id stack
+let tab = "photos";
+let sel = new Set();
+let thumbURL = new Map();
+let viewURL = null, vList = [], vIdx = 0;
+
+/* ---------------- tiny UI helpers ---------------- */
+function toast(msg){
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2400);
+}
+function shade(html){
+  const d = document.createElement("div"); d.className = "shade"; d.innerHTML = '<div class="sheet" role="dialog">' + html + "</div>";
+  d.addEventListener("click", e => { if(e.target === d) d.remove(); });
+  $("overlay").appendChild(d); return d;
+}
+function closeShades(){ $("overlay").innerHTML = ""; }
+function ask(title, def, opts){
+  opts = opts || {};
+  return new Promise(res => {
+    const d = shade(`<h3>${esc(title)}</h3><input class="dlgin" id="dlgv" ${opts.type ? 'type="' + opts.type + '"' : ""} value="${esc(def || "")}" placeholder="${esc(opts.ph || "")}" autocomplete="off"><div class="dlgbtn"><button id="dno">रद्द</button><button class="p" id="dyes">ठीक है</button></div>`);
+    const inp = d.querySelector("#dlgv"); setTimeout(() => { inp.focus(); inp.select(); }, 50);
+    const done = v => { d.remove(); res(v); };
+    d.querySelector("#dno").onclick = () => done(null);
+    d.querySelector("#dyes").onclick = () => done(inp.value.trim());
+    inp.onkeydown = e => { if(e.key === "Enter") done(inp.value.trim()); };
+  });
+}
+function sure(title, text, yes){
+  return new Promise(res => {
+    const d = shade(`<h3>${esc(title)}</h3><p style="color:var(--dim);margin-bottom:16px">${esc(text)}</p><div class="dlgbtn"><button id="dno">रद्द</button><button class="d" id="dyes">${esc(yes || "हाँ")}</button></div>`);
+    d.querySelector("#dno").onclick = () => { d.remove(); res(false); };
+    d.querySelector("#dyes").onclick = () => { d.remove(); res(true); };
+  });
+}
+function progress(p){ $("pbar").style.transform = "scaleX(" + p + ")"; if(p >= 1) setTimeout(() => $("pbar").style.transform = "scaleX(0)", 400); }
+
+/* ---------------- lock screen ---------------- */
+const LOGO = `<svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="#3a3344" stroke-width="3"/>${[0,60,120,180,240,300].map(a => `<path class="blade" style="transform:rotate(${a}deg)" d="M50 50 L50 8 A42 42 0 0 1 86.4 29 Z" fill="${a%120 ? "#2b2533" : "#352d3f"}" stroke="#121016" stroke-width="1.5"/>`).join("")}<circle cx="50" cy="50" r="6" fill="#121016"/></svg>`;
+let failState = (() => { try{ return JSON.parse(localStorage.getItem("lk_fail") || "{}"); }catch(e){ return {}; } })();
+function saveFail(){ try{ localStorage.setItem("lk_fail", JSON.stringify(failState)); }catch(e){} }
+const WAITS = [0, 0, 0, 0, 0, 60, 300, 1800];
+
+async function showLock(){
+  hideAll(); $("lock").classList.remove("hide");
+  document.body.className = "";
+  const vaults = await dbAll("vaults");
+  if(!vaults.length) return setupStep(0, {});
+  renderLockForm("");
+}
+function hideAll(){ ["home","viewer","calc","lock"].forEach(i => $(i).classList.add("hide")); }
+function renderLockForm(note){
+  $("lockbox").innerHTML = `${LOGO}<h1>Locker</h1><p class="sub">पासवर्ड डालो। जिस vault का पासवर्ड होगा, वही खुलेगा।</p>
+    <form id="lf" autocomplete="off"><input class="pw" id="lp" type="password" placeholder="पासवर्ड" autocomplete="current-password" enterkeyhint="go">
+    <div class="msg" id="lm" ${note ? 'style="color:var(--ok)"' : ""}>${esc(note)}</div><button class="btn" id="lgo" type="submit">खोलो</button></form>
+    <button class="btn ghost" id="lforgot">पासवर्ड भूल गए?</button><button class="btn ghost" id="lcloud">☁️ दूसरे डिवाइस से vault लाओ</button>`;
+  $("lf").onsubmit = async e => { e.preventDefault(); await doUnlock($("lp").value); };
+  $("lforgot").onclick = renderRecover;
+  $("lcloud").onclick = restoreFromCloud;
+  setTimeout(() => $("lp") && $("lp").focus(), 80);
+}
+async function doUnlock(pass){
+  const now = Date.now(); $("lm").style.color = "";
+  if(failState.until && failState.until > now){
+    const s = Math.ceil((failState.until - now) / 1000);
+    $("lm").textContent = "बहुत गलत कोशिशें। " + (s > 90 ? Math.ceil(s / 60) + " मिनट" : s + " सेकंड") + " रुकें।"; return;
+  }
+  if(!pass){ $("lm").textContent = "पासवर्ड लिखो।"; return; }
+  $("lgo").disabled = true; $("lgo").textContent = "खुल रहा है…";
+  const sess = await tryUnlock(pass);
+  if(sess){ failState = {}; saveFail(); enter(sess); return; }
+  failState.n = (failState.n || 0) + 1;
+  const w = WAITS[Math.min(failState.n, WAITS.length - 1)];
+  failState.until = w ? Date.now() + w * 1000 : 0; saveFail();
+  $("lgo").disabled = false; $("lgo").textContent = "खोलो";
+  $("lm").textContent = w ? "गलत पासवर्ड। अब " + (w >= 60 ? w / 60 + " मिनट" : w + " सेकंड") + " रुकें।" : "गलत पासवर्ड। दोबारा कोशिश करो।";
+  $("lp").value = ""; $("lp").focus();
+}
+function renderRecover(){
+  $("lockbox").innerHTML = `${LOGO}<h1>पासवर्ड वापस पाओ</h1><p class="sub">vault बनाते समय मिली Recovery Key लिखो। फिर नया पासवर्ड रखोगे।</p>
+    <form id="rf" autocomplete="off"><input class="pw" id="rk" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX" style="font-size:15.5px" autocapitalize="characters">
+    <div class="msg" id="rm"></div><button class="btn" type="submit">आगे</button></form><button class="btn ghost" id="rback">वापस</button>`;
+  $("rback").onclick = () => renderLockForm("");
+  $("rf").onsubmit = async e => {
+    e.preventDefault(); $("rm").textContent = "जाँच रहे हैं…";
+    const sess = await tryUnlock($("rk").value, "rec");
+    if(!sess){ $("rm").textContent = "यह Recovery Key किसी vault से नहीं मिली।"; return; }
+    renderNewPass(sess);
+  };
+}
+function renderNewPass(sess){
+  $("lockbox").innerHTML = `${LOGO}<h1>नया पासवर्ड</h1><p class="sub">"${esc(sess.meta.name)}" के लिए नया पासवर्ड रखो।</p>
+    <form id="nf" autocomplete="off"><input class="pw" id="n1" type="password" placeholder="नया पासवर्ड (कम से कम 6 अक्षर)"><input class="pw" id="n2" type="password" placeholder="फिर से लिखो">
+    <div class="msg" id="nm"></div><button class="btn" type="submit">सेव करो</button></form>`;
+  $("nf").onsubmit = async e => {
+    e.preventDefault();
+    const a = $("n1").value, b = $("n2").value;
+    if(a.length < 6){ $("nm").textContent = "पासवर्ड कम से कम 6 अक्षर का हो।"; return; }
+    if(a !== b){ $("nm").textContent = "दोनों पासवर्ड एक जैसे नहीं हैं।"; return; }
+    if(await passTaken(a, sess.vault.id)){ $("nm").textContent = "यह पासवर्ड किसी और vault में है। दूसरा रखो।"; return; }
+    await rewrap(sess, a); failState = {}; saveFail(); toast("नया पासवर्ड सेव हो गया"); enter(sess);
+  };
+}
+async function passTaken(pass, exceptId){
+  for(const v of await dbAll("vaults")){ if(v.id === exceptId) continue; try{ await openWith(v, "pw", pass); return true; }catch(e){} }
+  return false;
+}
+
+/* ---------------- first-run setup ---------------- */
+const DEFAULTS = [{ name: "Personal", icon: "💕", accent: "rose" }, { name: "Family", icon: "👨‍👩‍👧", accent: "family" }];
+async function setupStep(step, ctx){
+  const box = $("lockbox");
+  if(step === 0){
+    box.innerHTML = `${LOGO}<h1>अपना Locker बनाओ</h1><p class="sub">दो vault बनेंगे, हर एक का अपना पासवर्ड। एक पासवर्ड से सिर्फ़ उसी का vault खुलेगा।</p><button class="btn" id="go">शुरू करो</button><button class="btn ghost" id="gocloud" style="margin-top:8px">☁️ पहले से Locker है? Google से लाओ</button>
+    <p class="sub" style="margin-top:18px;font-size:13px">फ़ोटो इस फ़ोन में ताला लगाकर रखी जाती हैं। पासवर्ड और Recovery Key दोनों खो दिए तो फ़ोटो कोई नहीं खोल सकता।</p>`;
+    $("go").onclick = () => setupStep(1, ctx);
+    $("gocloud").onclick = restoreFromCloud;
+    return;
+  }
+  const i = step - 1; // 0 or 1
+  if(step === 1 || step === 2){
+    const d = DEFAULTS[i];
+    box.innerHTML = `${LOGO}<div class="steps">Vault ${step} / 2</div><h1>${step === 1 ? "पहला vault" : "दूसरा vault"}</h1><p class="sub">${step === 1 ? "निजी फ़ोटो के लिए।" : "परिवार की फ़ोटो के लिए।"}</p>
+    <form id="sf" autocomplete="off"><input class="pw" id="sn" value="${esc(d.name)}" style="letter-spacing:0;font-size:17px" placeholder="vault का नाम">
+    <input class="pw" id="s1" type="password" placeholder="पासवर्ड (कम से कम 6 अक्षर)"><input class="pw" id="s2" type="password" placeholder="फिर से लिखो">
+    <div class="msg" id="sm"></div><button class="btn" id="sgo" type="submit">आगे</button></form>`;
+    $("sf").onsubmit = async e => {
+      e.preventDefault();
+      const name = $("sn").value.trim() || d.name, a = $("s1").value, b = $("s2").value;
+      if(a.length < 6){ $("sm").textContent = "पासवर्ड कम से कम 6 अक्षर का हो।"; return; }
+      if(a !== b){ $("sm").textContent = "दोनों पासवर्ड एक जैसे नहीं हैं।"; return; }
+      if(step === 2 && a === ctx.pw1){ $("sm").textContent = "दोनों vault के पासवर्ड अलग रखो।"; return; }
+      $("sgo").disabled = true; $("sgo").textContent = "ताला बन रहा है…";
+      const r = await createVault(name, d.icon, d.accent, a);
+      ctx["rec" + step] = { name, key: r.recKey };
+      if(step === 1) ctx.pw1 = a;
+      setupStep(step === 1 ? 2 : 3, ctx);
+    };
+    setTimeout(() => $("s1") && $("s1").focus(), 80);
+    return;
+  }
+  // step 3: show recovery keys
+  box.innerHTML = `${LOGO}<h1>Recovery Key लिखकर रखो</h1><p class="sub">पासवर्ड भूले तो सिर्फ़ यही रास्ता है। कागज़ पर लिखो, फ़ोन में फ़ोटो मत खींचो।</p>
+    ${[ctx.rec1, ctx.rec2].map(r => `<div class="rec"><small>${esc(r.name)}</small>${r.key}</div>`).join("")}
+    <label class="chk"><input type="checkbox" id="ok"> मैंने दोनों Recovery Key लिख ली हैं</label><button class="btn" id="fin" disabled>Locker खोलो</button>`;
+  $("ok").onchange = () => $("fin").disabled = !$("ok").checked;
+  $("fin").onclick = () => renderLockForm("तैयार है। अपना पासवर्ड डालो।");
+}
+
+/* ---------------- enter / leave vault ---------------- */
+async function enter(sess){
+  S = sess; path = []; tab = "photos"; sel = new Set(); $("q").value = "";
+  document.body.className = sess.meta.accent === "family" ? "v-family" : (sess.meta.accent === "rose" ? "" : "v-other");
+  const [fr, it] = await Promise.all([dbAll("folders", "v", sess.vault.id), dbAll("items", "v", sess.vault.id)]);
+  folders = []; items = [];
+  for(const f of fr){ try{ folders.push(Object.assign({ id: f.id }, await decJSON(S.key, f.enc))); }catch(e){} }
+  for(const x of it){ try{ items.push(Object.assign({ id: x.id }, await decJSON(S.key, x.enc))); }catch(e){} }
+  $("vname").innerHTML = "<i>" + esc(sess.meta.icon) + "</i>" + esc(sess.meta.name);
+  hideAll(); $("home").classList.remove("hide");
+  $("home").classList.remove("reveal"); void $("home").offsetWidth; $("home").classList.add("reveal");
+  render();
+  if(SET.back){ try{ history.pushState({ lk: 1 }, ""); }catch(e){} }
+  armIdle(); cloudStart();
+  try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+}
+function lockNow(why){
+  if(!S) return;
+  clearTimeout(idleT);
+  S.raw.fill(0); S = null; folders = []; items = []; sel = new Set(); path = [];
+  thumbURL.forEach(u => URL.revokeObjectURL(u)); thumbURL.clear();
+  if(viewURL){ URL.revokeObjectURL(viewURL); viewURL = null; }
+  $("gridwrap").innerHTML = ""; $("rolls").innerHTML = ""; $("vstage").innerHTML = ""; $("q").value = "";
+  closeShades(); document.body.classList.remove("curtain");
+  showLock();
+}
+function panic(){ lockNow("panic"); hideAll(); $("calc").classList.remove("hide"); calcReset(); }
+
+/* ---------------- data helpers ---------------- */
+const kids = id => folders.filter(f => !f.trashed && (f.parent || null) === id);
+const inFolder = id => items.filter(x => !x.trashed && (x.folder || null) === id);
+function pathNames(){ return path.map(id => (folders.find(f => f.id === id) || {}).name || "?"); }
+async function saveItemMeta(x){ const { id, ...rest } = x; await dbPut("items", { id, vaultId: S.vault.id, enc: await encJSON(S.key, rest) }); }
+async function saveFolderMeta(f){ const { id, ...rest } = f; await dbPut("folders", { id, vaultId: S.vault.id, enc: await encJSON(S.key, rest) }); }
+
+/* ---------------- render ---------------- */
+function render(){
+  $("nv-photos").classList.toggle("on", tab === "photos"); $("nv-trash").classList.toggle("on", tab === "trash");
+  $("fab").classList.toggle("hide", tab !== "photos");
+  const cr = $("crumbs");
+  if(tab === "trash"){ cr.innerHTML = "<b style='color:var(--silver)'>Trash</b><span> · हटाई हुई चीज़ें यहाँ रहती हैं</span>"; }
+  else{
+    const names = pathNames();
+    cr.innerHTML = `<button class="${path.length ? "" : "cur"}" onclick="gotoPath(-1)">सब फ़ोटो</button>` + names.map((n, i) => `<span>›</span><button class="${i === names.length - 1 ? "cur" : ""}" onclick="gotoPath(${i})">${esc(n)}</button>`).join("");
+  }
+  renderGrid();
+  updateSelUI();
+}
+function gotoPath(i){ path = path.slice(0, i + 1); sel.clear(); $("q").value = ""; render(); }
+function goTab(t){ tab = t; path = []; sel.clear(); $("q").value = ""; render(); }
+
+function renderGrid(){
+  const q = $("q").value.trim().toLowerCase();
+  let fl, it;
+  if(tab === "trash"){ fl = folders.filter(f => f.trashed && !f.viaFolder); it = items.filter(x => x.trashed && !x.viaFolder); }
+  else if(q){ fl = folders.filter(f => !f.trashed && f.name.toLowerCase().includes(q)); it = items.filter(x => !x.trashed && x.name.toLowerCase().includes(q)); }
+  else{ const cur = path.length ? path[path.length - 1] : null; fl = kids(cur); it = inFolder(cur); }
+  it = it.slice().sort((a, b) => b.ts - a.ts);
+  $("rolls").innerHTML = fl.map(f => {
+    const n = items.filter(x => !x.trashed && x.folder === f.id).length + folders.filter(g => !g.trashed && g.parent === f.id).length;
+    return `<button class="roll" data-f="${f.id}"><b>📁 ${esc(f.name)}</b><span>${tab === "trash" ? "folder" : n + " चीज़ें"}</span></button>`;
+  }).join("");
+  $("rolls").classList.toggle("hide", !fl.length);
+  document.querySelectorAll("#rolls .roll").forEach(b => {
+    const f = b.dataset.f; let t = 0;
+    b.onclick = () => { if(sel.size || tab === "trash") toggleSel("f:" + f); else { path.push(f); render(); } };
+    b.oncontextmenu = e => { e.preventDefault(); toggleSel("f:" + f); };
+    b.onpointerdown = () => { t = setTimeout(() => { toggleSel("f:" + f); t = 0; }, 520); };
+    ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, () => clearTimeout(t)));
+    b.classList.toggle("on", sel.has("f:" + f)); b.style.borderColor = sel.has("f:" + f) ? "var(--accent)" : "";
+  });
+  const gw = $("gridwrap");
+  if(!it.length && !fl.length){
+    gw.innerHTML = tab === "trash"
+      ? `<div class="empty"><b>Trash खाली है</b>हटाई हुई फ़ोटो यहाँ मिलेंगी, जब तक आप पक्का न हटाओ।</div>`
+      : (q ? `<div class="empty"><b>कुछ नहीं मिला</b>कोई दूसरा नाम लिखकर देखो।</div>` : `<div class="empty"><b>यहाँ अभी कुछ नहीं है</b>नीचे ＋ दबाकर फ़ोटो जोड़ो या नया फ़ोल्डर बनाओ।</div>`);
+    return;
+  }
+  gw.innerHTML = `<div class="grid${sel.size ? " sel" : ""}">` + it.map((x, i) =>
+    `<div class="tile${sel.has("i:" + x.id) ? " on" : ""}" data-i="${x.id}"><div class="ph">🖼️</div><span class="fr">${it.length - i}</span><span class="tick"></span></div>`).join("") + "</div>";
+  const tiles = gw.querySelectorAll(".tile");
+  const io = new IntersectionObserver(es => es.forEach(en => { if(en.isIntersecting){ io.unobserve(en.target); loadThumb(en.target); } }), { root: $("scroll"), rootMargin: "300px" });
+  tiles.forEach((t, i) => {
+    io.observe(t); let timer = 0, long = false;
+    t.onpointerdown = () => { long = false; timer = setTimeout(() => { long = true; toggleSel("i:" + t.dataset.i); }, 520); };
+    ["pointerup", "pointerleave", "pointercancel"].forEach(ev => t.addEventListener(ev, () => clearTimeout(timer)));
+    t.onclick = () => { if(long) return; if(sel.size || tab === "trash") toggleSel("i:" + t.dataset.i); else openViewer(it, i); };
+    t.oncontextmenu = e => { e.preventDefault(); toggleSel("i:" + t.dataset.i); };
+  });
+}
+async function loadThumb(tile){
+  const id = tile.dataset.i; let url = thumbURL.get(id);
+  if(!url){
+    try{
+      const rec = await getThumbRec(id); if(!rec || !S) return;
+      url = URL.createObjectURL(new Blob([await aesDec(S.key, rec.t)], { type: "image/jpeg" })); thumbURL.set(id, url);
+    }catch(e){ return; }
+  }
+  const img = new Image(); img.alt = ""; img.src = url; img.onload = () => { const ph = tile.querySelector(".ph"); if(ph) ph.remove(); tile.prepend(img); };
+}
+
+/* ---------------- selection ---------------- */
+function toggleSel(k){ if(sel.has(k)) sel.delete(k); else sel.add(k); renderGrid(); updateSelUI(); }
+function clearSel(){ sel.clear(); renderGrid(); updateSelUI(); }
+function updateSelUI(){
+  const on = sel.size > 0; $("selbar").classList.toggle("hide", !on); $("selcount").textContent = sel.size + " चुनी";
+  const tr = tab === "trash";
+  $("sb-move").classList.toggle("hide", tr); $("sb-dl").classList.toggle("hide", tr); $("sb-res").classList.toggle("hide", !tr);
+  $("sb-del").textContent = tr ? "❌ पक्का हटाओ" : "🗑️";
+}
+const selItems = () => [...sel].filter(k => k[0] === "i").map(k => items.find(x => x.id === k.slice(2))).filter(Boolean);
+const selFolders = () => [...sel].filter(k => k[0] === "f").map(k => folders.find(f => f.id === k.slice(2))).filter(Boolean);
+
+function descendants(fid){ const out = [fid]; folders.filter(f => f.parent === fid).forEach(f => out.push(...descendants(f.id))); return out; }
+async function trashFolder(f, on){
+  const ids = descendants(f.id);
+  for(const id of ids){
+    const g = folders.find(x => x.id === id); if(!g) continue;
+    if(on){ g.trashed = true; if(id !== f.id) g.viaFolder = f.id; } else if(id === f.id || g.viaFolder === f.id){ g.trashed = false; delete g.viaFolder; }
+    await saveFolderMeta(g);
+    for(const x of items.filter(x => x.folder === id)){
+      if(on){ if(!x.trashed){ x.trashed = true; x.viaFolder = f.id; } } else if(x.viaFolder === f.id){ x.trashed = false; delete x.viaFolder; }
+      await saveItemMeta(x);
+    }
+  }
+}
+async function selDelete(){
+  const its = selItems(), fls = selFolders();
+  if(tab === "trash"){
+    if(!await sure("पक्का हटाओ?", "यह वापस नहीं आएगा।", "पक्का हटाओ")) return;
+    for(const f of fls){ for(const id of descendants(f.id)){ for(const x of items.filter(x => x.folder === id)) await purge(x); await dbDel("folders", id); folders = folders.filter(g => g.id !== id); } }
+    for(const x of its) await purge(x);
+  } else {
+    if(!await sure("Trash में भेजें?", (its.length + fls.length) + " चीज़ें Trash में जाएँगी। वहाँ से वापस ला सकते हो।", "Trash में भेजो")) return;
+    for(const x of its){ x.trashed = true; await saveItemMeta(x); }
+    for(const f of fls) await trashFolder(f, true);
+  }
+  clearSel(); render();
+}
+async function purge(x){ await dbDel(["items", "thumbs", "blobs"], x.id); items = items.filter(y => y.id !== x.id); const u = thumbURL.get(x.id); if(u){ URL.revokeObjectURL(u); thumbURL.delete(x.id); } }
+async function selRestore(){
+  for(const x of selItems()){ x.trashed = false; delete x.viaFolder; if(x.folder && (folders.find(f => f.id === x.folder) || {}).trashed) x.folder = null; await saveItemMeta(x); }
+  for(const f of selFolders()){ if(f.parent && (folders.find(g => g.id === f.parent) || {}).trashed){ f.parent = null; } await trashFolder(f, false); }
+  toast("वापस आ गई"); clearSel(); render();
+}
+async function selMove(){
+  const its = selItems(), fls = selFolders();
+  const all = folders.filter(f => !f.trashed && !fls.some(s => descendants(s.id).includes(f.id)));
+  const d = shade(`<h3>कहाँ भेजें?</h3><button class="opt" data-t="root"><span>🖼️</span>सब फ़ोटो (मुख्य)</button>${all.map(f => `<button class="opt" data-t="${f.id}"><span>📁</span>${esc(f.name)}</button>`).join("")}`);
+  d.querySelectorAll(".opt").forEach(b => b.onclick = async () => {
+    const t = b.dataset.t === "root" ? null : b.dataset.t; d.remove();
+    for(const x of its){ x.folder = t; await saveItemMeta(x); }
+    for(const f of fls){ f.parent = t; await saveFolderMeta(f); }
+    toast("भेज दिया"); clearSel(); render();
+  });
+}
+async function selDownload(){ for(const x of selItems()) await downloadItem(x); }
+
+/* ---------------- add photos / folders ---------------- */
+function addMenu(){
+  const d = shade(`<h3>जोड़ो</h3><button class="opt" id="a1"><span>🖼️</span>फ़ोटो जोड़ो</button><button class="opt" id="a2"><span>📁</span>नया फ़ोल्डर</button>`);
+  d.querySelector("#a1").onclick = () => { d.remove(); const f = document.createElement("input"); f.type = "file"; f.accept = "image/*"; f.multiple = true; f.onchange = () => addFiles(Array.from(f.files)); f.click(); };
+  d.querySelector("#a2").onclick = async () => { d.remove(); const n = await ask("फ़ोल्डर का नाम", "", { ph: "जैसे Trip" }); if(!n) return; const f = { id: uid(), name: n, parent: path.length ? path[path.length - 1] : null, ts: Date.now() }; folders.push(f); await saveFolderMeta(f); render(); };
+}
+async function shrink(bitmap, max, q){
+  const sc = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+  const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(bitmap.width * sc)); c.height = Math.max(1, Math.round(bitmap.height * sc));
+  c.getContext("2d").drawImage(bitmap, 0, 0, c.width, c.height);
+  return { blob: await new Promise(r => c.toBlob(r, "image/jpeg", q)), w: c.width, h: c.height };
+}
+async function addFiles(files){
+  if(!S || !files.length) return;
+  const cur = path.length ? path[path.length - 1] : null, Q = { original: 0, balanced: 2400, small: 1600 }[SET.quality];
+  let done = 0, fail = 0;
+  for(const file of files){
+    try{
+      let bytes, w = 0, h = 0, mime = file.type || "image/jpeg", thumb = null, name = file.name || "photo";
+      let bmp = null; try{ bmp = await createImageBitmap(file); }catch(e){}
+      if(bmp && Q){ const r = await shrink(bmp, Q, SET.quality === "small" ? .72 : .86); bytes = await r.blob.arrayBuffer(); w = r.w; h = r.h; mime = "image/jpeg"; name = name.replace(/\.[^.]+$/, "") + ".jpg"; }
+      else{ bytes = await file.arrayBuffer(); if(bmp){ w = bmp.width; h = bmp.height; } }
+      if(bmp){ const t = await shrink(bmp, 360, .72); thumb = await t.blob.arrayBuffer(); bmp.close && bmp.close(); }
+      const id = uid(), meta = { id, name, folder: cur, ts: Date.now() + done, size: bytes.byteLength, mime, w, h };
+      const blobRec = { id, d: await aesEnc(S.key, bytes) };
+      await dbPut("blobs", blobRec);
+      if(thumb) await dbPut("thumbs", { id, t: await aesEnc(S.key, thumb) });
+      await saveItemMeta(meta); items.push(meta);
+    }catch(e){ console.error(e); fail++; }
+    done++; progress(done / files.length); if(done % 3 === 0) render();
+  }
+  render(); toast(fail ? (files.length - fail) + " जुड़ीं, " + fail + " नहीं जुड़ पाईं" : files.length + " फ़ोटो जुड़ गईं");
+}
+
+/* ---------------- viewer ---------------- */
+async function openViewer(list, i){
+  vList = list; vIdx = i; $("viewer").classList.remove("hide"); await showV();
+}
+async function showV(){
+  const x = vList[vIdx]; if(!x) return closeViewer();
+  $("vtitle").textContent = x.name; $("vcount").textContent = (vIdx + 1) + " / " + vList.length;
+  $("vstage").innerHTML = '<div style="color:#fff8">खुल रही है…</div>';
+  try{
+    const rec = await getBlobRec(x.id); const buf = await aesDec(S.key, rec.d);
+    if(viewURL) URL.revokeObjectURL(viewURL);
+    viewURL = URL.createObjectURL(new Blob([buf], { type: x.mime || "image/jpeg" }));
+    const img = new Image(); img.alt = x.name; img.src = viewURL; img.ondblclick = () => img.classList.toggle("z");
+    $("vstage").innerHTML = ""; $("vstage").appendChild(img);
+  }catch(e){ $("vstage").innerHTML = '<div style="color:#fffa">यह फ़ोटो खुल नहीं पाई।</div>'; }
+}
+function viewerStep(d){ if(!vList.length) return; vIdx = (vIdx + d + vList.length) % vList.length; showV(); }
+function closeViewer(){ $("viewer").classList.add("hide"); $("vstage").innerHTML = ""; if(viewURL){ URL.revokeObjectURL(viewURL); viewURL = null; } }
+function viewerInfo(){ const x = vList[vIdx]; if(!x) return; shade(`<h3>जानकारी</h3><div class="row"><div class="t"><b>${esc(x.name)}</b><small>${x.w && x.h ? x.w + " × " + x.h + " · " : ""}${fmtSize(x.size)} · ${new Date(x.ts).toLocaleDateString("en-GB")}</small></div></div>`); }
+async function viewerRename(){ const x = vList[vIdx]; const n = await ask("नया नाम", x.name); if(!n) return; x.name = n; await saveItemMeta(x); $("vtitle").textContent = n; renderGrid(); }
+async function viewerDelete(){
+  const x = vList[vIdx]; if(!await sure("Trash में भेजें?", "वहाँ से वापस ला सकते हो।", "Trash में भेजो")) return;
+  x.trashed = true; await saveItemMeta(x); vList.splice(vIdx, 1); if(!vList.length){ closeViewer(); render(); return; } vIdx = Math.min(vIdx, vList.length - 1); showV(); renderGrid();
+}
+function viewerDownload(){ downloadItem(vList[vIdx]); }
+async function downloadItem(x){
+  try{
+    const rec = await getBlobRec(x.id); const buf = await aesDec(S.key, rec.d);
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([buf], { type: x.mime || "image/jpeg" })); a.download = x.name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+  }catch(e){ toast("Download नहीं हुआ"); }
+}
+// swipe in viewer
+(function(){
+  let sx = 0, sy = 0;
+  const st = $("vstage");
+  st.addEventListener("touchstart", e => { if(e.touches.length === 1){ sx = e.touches[0].clientX; sy = e.touches[0].clientY; } }, { passive: true });
+  st.addEventListener("touchend", e => { const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; const img = st.querySelector("img"); if(img && img.classList.contains("z")) return; if(Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) viewerStep(dx < 0 ? 1 : -1); });
+  addEventListener("keydown", e => { if($("viewer").classList.contains("hide")) return; if(e.key === "ArrowRight") viewerStep(1); if(e.key === "ArrowLeft") viewerStep(-1); if(e.key === "Escape" && S){ e.stopImmediatePropagation(); closeViewer(); } }, true);
+})();
+
+/* ---------------- settings ---------------- */
+async function openSettings(){
+  const used = items.reduce((a, x) => a + (x.size || 0), 0);
+  const sw = (k, t, s) => `<div class="row"><div class="t"><b>${t}</b><small>${s}</small></div><input class="sw" type="checkbox" data-k="${k}" ${SET[k] ? "checked" : ""}></div>`;
+  const d = shade(`<h3>Settings</h3>
+    <div class="row"><div class="t"><b>इस vault में</b><small>${items.filter(x => !x.trashed).length} फ़ोटो · ${fmtSize(used)}</small></div></div>
+    <h3 style="margin-top:16px;font-size:16px">तुरंत लॉक</h3>
+    ${sw("shake", "📳 फ़ोन हिलाओ", "3 झटके में लॉक")}
+    <div class="row"><div class="t"><b>झटका कितना ज़ोरदार</b><small>चलते समय गलती से लॉक न हो</small></div><select class="sel" id="sp"><option value="9">हल्का</option><option value="14">सामान्य</option><option value="20">ज़ोरदार</option></select></div>
+    ${sw("hidden", "📱 ऐप से बाहर जाओ", "होम बटन, दूसरा ऐप या स्क्रीन बंद")}
+    ${sw("facedown", "🙈 फ़ोन उल्टा रखो", "स्क्रीन नीचे करते ही लॉक")}
+    ${sw("back", "⬅️ Back बटन", "Back दबाते ही लॉक")}
+    ${sw("twofinger", "👆 दो उँगली, तीन बार", "कहीं भी दबाओ, लॉक")}
+    ${sw("curtain", "🌫️ धुंधला परदा", "ऐप से बाहर जाते ही फ़ोटो धुंधली")}
+    <div class="row"><div class="t"><b>⏱️ अपने-आप लॉक</b><small>कुछ न छुओ तो</small></div><select class="sel" id="al"><option value="15">15 सेकंड</option><option value="30">30 सेकंड</option><option value="60">1 मिनट</option><option value="300">5 मिनट</option><option value="0">कभी नहीं</option></select></div>
+    <div class="row"><div class="t"><b>Laptop पर</b><small>Esc या Ctrl+L दबाओ</small></div></div>
+    <div class="row hide" id="iosrow"><div class="t"><b>iPhone: हिलाने की अनुमति</b><small>एक बार देनी पड़ती है</small></div><button class="sel" id="iosbtn" style="background:var(--accent);color:var(--accent-ink);padding:8px 12px;border-radius:10px;font-weight:700">अनुमति दो</button></div>
+    <h3 style="margin-top:16px;font-size:16px">फ़ोटो</h3>
+    <div class="row"><div class="t"><b>जमा करते समय छोटी करो</b><small>जगह बचती है</small></div><select class="sel" id="ql"><option value="balanced">संतुलित</option><option value="small">बहुत छोटी</option><option value="original">असली (बड़ी)</option></select></div>
+    <h3 style="margin-top:16px;font-size:16px">☁️ Cloud (Google Drive)</h3>
+    <div id="cloudbox"></div>
+    <h3 style="margin-top:16px;font-size:16px">Backup फ़ाइल</h3>
+    <button class="opt" id="bk1"><span>📦</span>Backup निकालो (ताले वाली फ़ाइल)</button>
+    <button class="opt" id="bk2"><span>📥</span>Backup से वापस लाओ</button>
+    <h3 style="margin-top:16px;font-size:16px">खाता</h3>
+    <button class="opt" id="cp"><span>🔑</span>इस vault का पासवर्ड बदलो</button>
+    <button class="opt" id="av"><span>➕</span>नया vault जोड़ो</button>
+    <button class="opt" id="lk"><span>🔒</span>अभी लॉक करो</button>
+    <p style="color:var(--faint);font-size:12.5px;margin-top:10px">फ़ोटो ताला लगाकर रखी जाती हैं। Cloud बंद हो तो वे सिर्फ़ इसी डिवाइस में हैं, और ब्राउज़र का डेटा साफ़ करने पर चली जाएँगी।</p>`);
+  d.querySelector("#sp").value = String(SET.shakePower); d.querySelector("#al").value = String(SET.autolock); d.querySelector("#ql").value = SET.quality;
+  d.querySelectorAll(".sw").forEach(c => c.onchange = () => { SET[c.dataset.k] = c.checked; saveSet(); });
+  d.querySelector("#sp").onchange = e => { SET.shakePower = +e.target.value; saveSet(); };
+  d.querySelector("#al").onchange = e => { SET.autolock = +e.target.value; saveSet(); armIdle(); };
+  d.querySelector("#ql").onchange = e => { SET.quality = e.target.value; saveSet(); };
+  if(typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function"){
+    d.querySelector("#iosrow").classList.remove("hide");
+    d.querySelector("#iosbtn").onclick = async () => { try{ const r = await DeviceMotionEvent.requestPermission(); toast(r === "granted" ? "अनुमति मिल गई" : "अनुमति नहीं मिली"); }catch(e){ toast("अनुमति नहीं मिली"); } };
+  }
+  d.querySelector("#lk").onclick = () => lockNow("manual");
+  renderCloudBox(d.querySelector("#cloudbox"));
+  d.querySelector("#bk1").onclick = exportBackup;
+  d.querySelector("#bk2").onclick = () => { const f = document.createElement("input"); f.type = "file"; f.accept = ".locker"; f.onchange = () => f.files[0] && importBackup(f.files[0]); f.click(); };
+  d.querySelector("#cp").onclick = async () => {
+    d.remove(); const a = await ask("नया पासवर्ड (कम से कम 6 अक्षर)", "", { type: "password" }); if(!a) return;
+    if(a.length < 6){ toast("पासवर्ड कम से कम 6 अक्षर का हो"); return; }
+    const b = await ask("फिर से लिखो", "", { type: "password" }); if(a !== b){ toast("दोनों पासवर्ड एक जैसे नहीं हैं"); return; }
+    if(await passTaken(a, S.vault.id)){ toast("यह पासवर्ड किसी और vault में है"); return; }
+    await rewrap(S, a); toast("पासवर्ड बदल गया");
+  };
+  d.querySelector("#av").onclick = async () => {
+    d.remove(); const n = await ask("नए vault का नाम", ""); if(!n) return;
+    const a = await ask("इसका पासवर्ड (कम से कम 6 अक्षर)", "", { type: "password" }); if(!a || a.length < 6){ toast("पासवर्ड कम से कम 6 अक्षर का हो"); return; }
+    const b = await ask("फिर से लिखो", "", { type: "password" }); if(a !== b){ toast("दोनों पासवर्ड एक जैसे नहीं हैं"); return; }
+    if(await passTaken(a, "")){ toast("यह पासवर्ड किसी vault में है। दूसरा रखो।"); return; }
+    const r = await createVault(n, "🔐", "other", a);
+    shade(`<h3>Recovery Key लिख लो</h3><p style="color:var(--dim);margin-bottom:10px">"${esc(n)}" का पासवर्ड भूले तो यही चाहिए।</p><div class="rec">${r.recKey}</div><button class="btn" onclick="closeShades()">लिख ली</button>`);
+  };
+}
+
+/* ---------------- instant-lock triggers ---------------- */
+let idleT = 0;
+function armIdle(){ clearTimeout(idleT); if(S && SET.autolock) idleT = setTimeout(() => lockNow("idle"), SET.autolock * 1000); }
+["pointerdown", "keydown", "scroll", "touchstart", "wheel"].forEach(e => addEventListener(e, () => { if(S) armIdle(); }, { passive: true, capture: true }));
+document.addEventListener("visibilitychange", () => { if(document.hidden){ if(S && SET.hidden) lockNow("hidden"); } });
+addEventListener("pagehide", () => { if(S && SET.hidden) lockNow("hidden"); });
+addEventListener("blur", () => { if(S && SET.curtain) document.body.classList.add("curtain"); });
+addEventListener("focus", () => document.body.classList.remove("curtain"));
+addEventListener("popstate", () => { if(S && SET.back){ lockNow("back"); } });
+addEventListener("keydown", e => { if(S && (e.key === "Escape" || (e.ctrlKey && e.key.toLowerCase() === "l"))){ e.preventDefault(); lockNow("key"); } });
+(function(){
+  let taps = [];
+  addEventListener("touchstart", e => { if(!S || !SET.twofinger || e.touches.length !== 2) return; const n = Date.now(); taps = taps.filter(t => n - t < 900); taps.push(n); if(taps.length >= 3){ taps = []; lockNow("twofinger"); } }, { passive: true });
+  let last = null, hits = [], fd = 0;
+  addEventListener("devicemotion", e => {
+    if(!S) return; const a = e.accelerationIncludingGravity; if(!a) return;
+    const m = Math.hypot(a.x || 0, a.y || 0, a.z || 0), n = Date.now();
+    if(SET.shake && last !== null && Math.abs(m - last) > SET.shakePower){ hits = hits.filter(t => n - t < 1000); hits.push(n); if(hits.length >= 3){ hits = []; lockNow("shake"); return; } }
+    last = m;
+    if(SET.facedown && (a.z || 0) < -8.5 && Math.abs(a.x || 0) < 3 && Math.abs(a.y || 0) < 3){ if(!fd) fd = n; else if(n - fd > 600){ fd = 0; lockNow("facedown"); } } else fd = 0;
+  });
+})();
+
+/* ---------------- calculator (panic screen) ---------------- */
+let cv = "0", cacc = null, cop = null, cnew = true;
+function calcReset(){ cv = "0"; cacc = null; cop = null; cnew = true; $("cdisp").textContent = "0"; }
+(function(){
+  const keys = ["AC","±","%","÷","7","8","9","×","4","5","6","−","1","2","3","+","0",".","="];
+  $("ckeys").innerHTML = keys.map(k => `<button class="${"÷×−+=".includes(k) ? "o" : ("AC±%".includes(k) && k.length <= 2 && k !== "0" && !/\d/.test(k) ? "f" : "")}${k === "0" ? " z" : ""}" data-k="${k}">${k}</button>`).join("");
+  const calc = (a, b, o) => o === "+" ? a + b : o === "−" ? a - b : o === "×" ? a * b : (b === 0 ? NaN : a / b);
+  const show = v => { const s = String(Math.round(v * 1e8) / 1e8); $("cdisp").textContent = s === "NaN" ? "Error" : s; };
+  let hold = 0;
+  $("ckeys").querySelectorAll("button").forEach(b => {
+    const k = b.dataset.k;
+    b.onpointerdown = () => { if(k === "=") hold = setTimeout(() => { hold = 0; calcReset(); showLock(); }, 800); };
+    b.onpointerup = b.onpointerleave = () => { if(hold){ clearTimeout(hold); hold = 0; } };
+    b.onclick = () => {
+      if(/\d/.test(k)){ cv = cnew || cv === "0" ? k : cv + k; cnew = false; $("cdisp").textContent = cv; }
+      else if(k === "."){ if(cnew){ cv = "0."; cnew = false; } else if(!cv.includes(".")) cv += "."; $("cdisp").textContent = cv; }
+      else if(k === "AC") calcReset();
+      else if(k === "±"){ cv = String(-parseFloat(cv)); $("cdisp").textContent = cv; }
+      else if(k === "%"){ cv = String(parseFloat(cv) / 100); $("cdisp").textContent = cv; cnew = true; }
+      else{ const cur = parseFloat(cv); if(cacc !== null && cop && !cnew) cacc = calc(cacc, cur, cop); else if(cacc === null || k === "=") cacc = cacc === null ? cur : cacc; if(cacc === null) cacc = cur; show(cacc); cop = k === "=" ? null : k; cnew = true; if(k === "=") cv = String(cacc); }
+    };
+  });
+})();
+
+
+/* =====================================================================
+   ☁️ Cloud sync — Google Drive "appDataFolder" (hidden, app-private folder)
+   Only already-encrypted bytes go to Drive. Password / keys never leave this device.
+   File names:  v_<vault>  f_<folder>  i_<item>  t_<item thumb>  b_<item photo>
+===================================================================== */
+const FB_CFG = { apiKey: "AIzaSyBVhsIOBQ-8fu4tCeBnYvH7LeZf20t7KVE", authDomain: "naregamangment.firebaseapp.com", projectId: "naregamangment", appId: "1:367881034184:web:8250c6fe144c8bc6a088fd" };
+const DRIVE = "https://www.googleapis.com/drive/v3/files", UPLOAD = "https://www.googleapis.com/upload/drive/v3/files";
+const STORE_OF = { v: "vaults", f: "folders", i: "items", t: "thumbs", b: "blobs" };
+const C = { on: false, email: "", token: "", exp: 0, busy: false, err: "", state: "off", timer: 0, poll: 0 };
+(function(){
+  try{ const o = JSON.parse(localStorage.getItem("lk_cloud") || "{}"); C.on = !!o.on; C.email = o.email || ""; }catch(e){}
+  try{ const t = JSON.parse(sessionStorage.getItem("lk_tok") || "{}"); if(t.t && t.exp > Date.now()){ C.token = t.t; C.exp = t.exp; } }catch(e){}
+})();
+function saveCloud(){ try{ localStorage.setItem("lk_cloud", JSON.stringify({ on: C.on, email: C.email })); }catch(e){} }
+const cloudReady = () => C.on && C.token && C.exp > Date.now() && navigator.onLine;
+function setToken(t, email){
+  C.token = t; C.exp = Date.now() + 55 * 60 * 1000; if(email) C.email = email; C.on = true; C.err = ""; saveCloud();
+  try{ sessionStorage.setItem("lk_tok", JSON.stringify({ t, exp: C.exp })); }catch(e){}
+}
+function cloudUI(state){
+  C.state = state; const b = $("cloudbtn"); if(!b) return;
+  const m = { off: ["☁︎", "Cloud बंद है"], ok: ["✅", "सब जमा है"], sync: ["🔄", "जमा हो रहा है…"], warn: ["⚠️", C.err || "Google से दोबारा जोड़ो"], wait: ["⏳", "इंटरनेट आने पर जमा होगा"] }[state];
+  b.textContent = m[0]; b.title = m[1]; b.style.opacity = state === "off" ? ".55" : "1";
+}
+function cloudTap(){
+  if(!C.on){ openSettings(); return; }
+  if(C.state === "warn" || !C.token){ cloudConnect().then(ok => ok && syncNow()); return; }
+  syncNow(); toast(C.state === "ok" ? "सब जमा है" : "जमा कर रहे हैं…");
+}
+async function fbAuth(){
+  if(typeof firebase === "undefined") throw new Error("nofb");
+  if(!firebase.apps.length) firebase.initializeApp(FB_CFG);
+  return firebase.auth();
+}
+async function cloudConnect(){
+  try{
+    const auth = await fbAuth(), prov = new firebase.auth.GoogleAuthProvider();
+    prov.addScope("https://www.googleapis.com/auth/drive.appdata"); prov.setCustomParameters({ prompt: "select_account" });
+    let r;
+    try{ r = await auth.signInWithPopup(prov); }
+    catch(e){
+      if(e && (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment")){ try{ sessionStorage.setItem("lk_redir", "1"); }catch(_){} await auth.signInWithRedirect(prov); return false; }
+      throw e;
+    }
+    setToken(r.credential && r.credential.accessToken, r.user && r.user.email);
+    if(!C.token) throw new Error("notoken");
+    return true;
+  }catch(e){
+    console.error(e);
+    toast(e && e.message === "nofb" ? "Google login की library नहीं मिली। इंटरनेट जाँचो।" : (e && e.code === "auth/popup-closed-by-user" ? "Login रद्द हुआ" : "Google से नहीं जुड़ पाए"));
+    return false;
+  }
+}
+async function cloudRedirectCheck(){
+  try{
+    if(typeof firebase === "undefined" || !C.on && !sessionStorage.getItem("lk_redir")) return;
+    const auth = await fbAuth(), r = await auth.getRedirectResult();
+    if(r && r.credential){ setToken(r.credential.accessToken, r.user && r.user.email); sessionStorage.removeItem("lk_redir"); syncNow(); }
+  }catch(e){}
+}
+async function gfetch(url, opt, retry){
+  opt = opt || {}; opt.headers = Object.assign({ Authorization: "Bearer " + C.token }, opt.headers || {});
+  const r = await fetch(url, opt);
+  if(r.status === 401){ C.token = ""; try{ sessionStorage.removeItem("lk_tok"); }catch(e){} const e = new Error("401"); e.status = 401; throw e; }
+  if((r.status === 429 || r.status === 403 || r.status >= 500) && !retry){ await sleep(1200); return gfetch(url, opt, true); }
+  if(!r.ok && r.status !== 404){ const e = new Error("drive " + r.status); e.status = r.status; throw e; }
+  return r;
+}
+const pool = async (list, n, fn) => { let i = 0; await Promise.all(Array.from({ length: Math.min(n, list.length) }, async () => { while(i < list.length){ const x = list[i++]; await fn(x); } })); };
+const cat = (iv, ct) => { const o = new Uint8Array(12 + ct.byteLength); o.set(new Uint8Array(iv), 0); o.set(new Uint8Array(ct), 12); return o; };
+const uncat = b => ({ iv: new Uint8Array(b.slice(0, 12)), ct: b.slice(12) });
+const b64 = u => { let s = ""; const a = new Uint8Array(u); for(let i = 0; i < a.length; i += 8192) s += String.fromCharCode.apply(null, a.subarray(i, i + 8192)); return btoa(s); };
+const unb64 = t => { const s = atob(t), a = new Uint8Array(s.length); for(let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; };
+const wrapJ = w => ({ iv: b64(w.iv), ct: b64(w.ct) }), unwrapJ = w => ({ iv: unb64(w.iv), ct: unb64(w.ct).buffer });
+function encodeRec(store, r){
+  if(store === "vaults") return { bytes: te.encode(JSON.stringify({ id: r.id, iter: r.iter, salt: b64(r.salt), recSalt: b64(r.recSalt), wrapPw: wrapJ(r.wrapPw), wrapRec: wrapJ(r.wrapRec), meta: wrapJ(r.meta) })), props: {} };
+  if(store === "folders" || store === "items") return { bytes: cat(r.enc.iv, r.enc.ct), props: { vaultId: r.vaultId } };
+  if(store === "thumbs") return { bytes: cat(r.t.iv, r.t.ct), props: {} };
+  return { bytes: cat(r.d.iv, r.d.ct), props: {} };
+}
+function decodeRec(kind, id, buf, props){
+  if(kind === "v"){ const j = JSON.parse(td.decode(buf)); return { id, iter: j.iter, salt: unb64(j.salt), recSalt: unb64(j.recSalt), wrapPw: unwrapJ(j.wrapPw), wrapRec: unwrapJ(j.wrapRec), meta: unwrapJ(j.meta) }; }
+  if(kind === "f" || kind === "i") return { id, vaultId: (props || {}).vaultId, enc: uncat(buf) };
+  if(kind === "t") return { id, t: uncat(buf) };
+  return { id, d: uncat(buf) };
+}
+async function listRemote(){
+  let out = [], tok = "";
+  do{
+    const r = await gfetch(DRIVE + "?spaces=appDataFolder&pageSize=1000&fields=" + encodeURIComponent("nextPageToken,files(id,name,modifiedTime,appProperties)") + (tok ? "&pageToken=" + tok : ""));
+    const j = await r.json(); out = out.concat(j.files || []); tok = j.nextPageToken || "";
+  }while(tok);
+  return out;
+}
+async function dlFile(fid){ const r = await gfetch(DRIVE + "/" + fid + "?alt=media"); if(r.status === 404) return null; return r.arrayBuffer(); }
+async function upFile(name, bytes, props, fid){
+  if(fid){
+    const r = await gfetch(UPLOAD + "/" + fid + "?uploadType=media&fields=id,modifiedTime", { method: "PATCH", headers: { "Content-Type": "application/octet-stream" }, body: bytes });
+    if(r.status !== 404) return r.json();
+  }
+  const bd = "lkb" + uid(), meta = JSON.stringify({ name, parents: ["appDataFolder"], appProperties: props });
+  const body = new Blob(["--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + meta + "\r\n--" + bd + "\r\nContent-Type: application/octet-stream\r\n\r\n", bytes, "\r\n--" + bd + "--"]);
+  const r = await gfetch(UPLOAD + "?uploadType=multipart&fields=id,modifiedTime", { method: "POST", headers: { "Content-Type": "multipart/related; boundary=" + bd }, body });
+  return r.json();
+}
+function queueOp(store, id, op){
+  if(!C.on || !PFX[store]) return;
+  rawPut("outbox", { name: PFX[store] + "_" + id, op, ts: Date.now() }).then(() => { C.pending = true; cloudKick(); }).catch(() => {});
+}
+function cloudKick(){ clearTimeout(C.timer); C.timer = setTimeout(() => syncNow("push"), 1500); if(C.state !== "warn") cloudUI(cloudReady() ? "sync" : "wait"); }
+async function push(){
+  const ob = await dbAll("outbox"); if(!ob.length) return;
+  const sy = new Map((await dbAll("sync")).map(x => [x.name, x]));
+  const puts = ob.filter(o => o.op === "put"), dels = ob.filter(o => o.op === "del");
+  await pool(puts, 4, async o => {
+    const kind = o.name[0], id = o.name.slice(2), store = STORE_OF[kind], rec = await dbGet(store, id);
+    if(!rec){ await rawDel("outbox", o.name); return; }
+    const e = encodeRec(store, rec), s = sy.get(o.name);
+    const res = await upFile(o.name, e.bytes, e.props, s && s.fid);
+    await rawPut("sync", { name: o.name, fid: res.id, mt: res.modifiedTime });
+    const cur = await dbGet("outbox", o.name); if(cur && cur.ts === o.ts) await rawDel("outbox", o.name);
+  });
+  await pool(dels, 4, async o => {
+    const s = sy.get(o.name);
+    if(s){ await gfetch(DRIVE + "/" + s.fid, { method: "DELETE" }); await rawDel("sync", o.name); }
+    await rawDel("outbox", o.name);
+  });
+}
+async function pull(onlyVaults){
+  const remote = await listRemote();
+  const sy = new Map((await dbAll("sync")).map(x => [x.name, x]));
+  const ob = new Set((await dbAll("outbox")).map(x => x.name));
+  const rn = new Set(remote.map(f => f.name));
+  const todo = []; let changedMeta = false, got = 0;
+  for(const f of remote){
+    const k = f.name[0]; if(!STORE_OF[k] || f.name[1] !== "_") continue;
+    if(onlyVaults && k !== "v") continue;
+    if(ob.has(f.name)) continue;
+    const s = sy.get(f.name);
+    if(s && s.mt === f.modifiedTime && s.fid === f.id) continue;
+    todo.push(f);
+  }
+  await pool(todo, 6, async f => {
+    const k = f.name[0], id = f.name.slice(2);
+    if(k === "t" || k === "b"){ await rawPut("sync", { name: f.name, fid: f.id, mt: f.modifiedTime }); if(sy.has(f.name)) await rawDel(STORE_OF[k], id); return; } // fetched later, on demand
+    const buf = await dlFile(f.id); if(!buf) return;
+    await rawPut(STORE_OF[k], decodeRec(k, id, buf, f.appProperties));
+    await rawPut("sync", { name: f.name, fid: f.id, mt: f.modifiedTime });
+    if(k === "f" || k === "i") changedMeta = true; got++;
+  });
+  if(!onlyVaults){
+    for(const s of sy.values()){
+      if(rn.has(s.name) || ob.has(s.name)) continue;
+      const k = s.name[0], id = s.name.slice(2);
+      await rawDel(STORE_OF[k], id); await rawDel("sync", s.name); if(k === "f" || k === "i") changedMeta = true;
+    }
+    // first connect: everything local that the cloud has never seen goes up
+    for(const [k, store] of Object.entries(STORE_OF)){
+      for(const key of await idb(store, "readonly", t => rq(t.objectStore(store).getAllKeys()))){
+        const n = k + "_" + key; if(!sy.has(n) && !rn.has(n) && !ob.has(n)) await rawPut("outbox", { name: n, op: "put", ts: Date.now() });
+      }
+    }
+  }
+  if(changedMeta && S) await reloadVault();
+  return got;
+}
+async function reloadVault(){
+  if(!S) return;
+  const [fr, it] = await Promise.all([dbAll("folders", "v", S.vault.id), dbAll("items", "v", S.vault.id)]);
+  const nf = [], ni = [];
+  for(const f of fr){ try{ nf.push(Object.assign({ id: f.id }, await decJSON(S.key, f.enc))); }catch(e){} }
+  for(const x of it){ try{ ni.push(Object.assign({ id: x.id }, await decJSON(S.key, x.enc))); }catch(e){} }
+  folders = nf; items = ni;
+  path = path.filter(id => folders.some(f => f.id === id && !f.trashed));
+  if(!$("viewer").classList.contains("hide")) return;
+  render();
+}
+async function syncNow(mode){
+  if(!C.on || C.busy) return;
+  if(!cloudReady()){ cloudUI(!navigator.onLine ? "wait" : (C.token ? "wait" : "warn")); return; }
+  C.busy = true; cloudUI("sync");
+  try{ if(mode !== "push") await pull(); await push(); C.err = ""; cloudUI("ok"); }
+  catch(e){ console.error(e); if(e.status === 401){ C.err = "Google से दोबारा जोड़ो"; cloudUI("warn"); } else { C.err = "जमा नहीं हो पाया, दोबारा कोशिश होगी"; cloudUI("warn"); setTimeout(() => cloudKick(), 20000); } }
+  finally{ C.busy = false; }
+}
+function cloudStart(){
+  cloudUI(!C.on ? "off" : (cloudReady() ? "sync" : (C.token ? "wait" : "warn")));
+  if(C.on){ syncNow(); }
+  clearInterval(C.poll);
+  C.poll = setInterval(() => { if(C.on && S && !document.hidden) syncNow(); }, 60000);
+}
+addEventListener("online", () => { if(C.on) syncNow(); });
+async function getThumbRec(id){
+  const l = await dbGet("thumbs", id); if(l) return l;
+  if(!cloudReady()) return null; const s = await dbGet("sync", "t_" + id); if(!s) return null;
+  try{ const b = await dlFile(s.fid); if(!b) return null; const rec = { id, t: uncat(b) }; await rawPut("thumbs", rec); return rec; }catch(e){ return null; }
+}
+async function getBlobRec(id){
+  const l = await dbGet("blobs", id); if(l) return l;
+  if(!cloudReady()) throw new Error("offline"); const s = await dbGet("sync", "b_" + id); if(!s) throw new Error("missing");
+  const b = await dlFile(s.fid); if(!b) throw new Error("missing"); const rec = { id, d: uncat(b) }; await rawPut("blobs", rec); return rec;
+}
+async function restoreFromCloud(){
+  if(!await cloudConnect()) return;
+  $("lockbox").innerHTML = LOGO + "<h1>Google से ला रहे हैं…</h1><p class='sub'>अपना vault खोज रहे हैं।</p>";
+  try{
+    await pull(true); const n = (await dbAll("vaults")).length;
+    if(!n){ C.on = false; saveCloud(); cloudUI("off"); renderLockForm(""); $("lm").textContent = "इस Google खाते में कोई Locker नहीं मिला।"; setTimeout(() => showLock(), 2500); return; }
+    renderLockForm(n + " vault मिले। अपना पासवर्ड डालो।");
+  }catch(e){ console.error(e); renderLockForm(""); $("lm").textContent = "Google Drive से नहीं ला पाए। दोबारा कोशिश करो।"; }
+}
+function renderCloudBox(box){
+  if(!box) return;
+  const used = "";
+  if(!C.on){
+    box.innerHTML = `<div class="row"><div class="t"><b>अभी बंद है</b><small>फ़ोटो सिर्फ़ इसी डिवाइस में हैं।</small></div></div><button class="opt" id="cc1"><span>☁️</span>Google से जोड़ो</button>`;
+    box.querySelector("#cc1").onclick = async () => { if(await cloudConnect()){ cloudStart(); renderCloudBox(box); toast("जुड़ गया। फ़ोटो जमा होना शुरू…"); } };
+  } else {
+    box.innerHTML = `<div class="row"><div class="t"><b>${esc(C.email || "Google खाता")}</b><small>${{ ok: "✅ सब जमा है", sync: "🔄 जमा हो रहा है…", warn: "⚠️ " + esc(C.err || "Google से दोबारा जोड़ो"), wait: "⏳ इंटरनेट/login का इंतज़ार" }[C.state] || ""}</small></div></div>
+    <button class="opt" id="cc2"><span>🔄</span>अभी sync करो</button><button class="opt" id="cc3"><span>🔑</span>Google से दोबारा जोड़ो</button><button class="opt" id="cc4"><span>⛔</span>Cloud बंद करो</button>`;
+    box.querySelector("#cc2").onclick = () => { syncNow(); toast("sync हो रहा है"); };
+    box.querySelector("#cc3").onclick = async () => { if(await cloudConnect()){ syncNow(); renderCloudBox(box); } };
+    box.querySelector("#cc4").onclick = async () => { if(await sure("Cloud बंद करें?", "Drive की कॉपी वैसी ही रहेगी। बंद होने पर नए बदलाव सिर्फ़ इस डिवाइस में रहेंगे।", "बंद करो")){ C.on = false; C.token = ""; saveCloud(); cloudUI("off"); renderCloudBox(box); } };
+  }
+}
+
+/* ---------------- backup file (everything stays encrypted) ---------------- */
+const J = (k, v) => (v instanceof ArrayBuffer || ArrayBuffer.isView(v)) ? { $b: b64(v) } : v;
+const unJ = (k, v) => (v && typeof v === "object" && v.$b !== undefined) ? unb64(v.$b) : v;
+async function exportBackup(){
+  toast("Backup बन रहा है…");
+  try{
+    const parts = ["LKB1\n"];
+    for(const store of ["vaults", "folders", "items", "thumbs", "blobs"]){
+      const all = await dbAll(store);
+      for(const r of all){ parts.push(JSON.stringify({ s: store, r }, J) + "\n"); }
+    }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(parts, { type: "application/octet-stream" }));
+    a.download = "Locker_backup_" + new Date().toISOString().slice(0, 10) + ".locker"; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 5000); toast("Backup फ़ाइल तैयार (ताले में है)");
+  }catch(e){ console.error(e); toast("Backup नहीं बन पाया"); }
+}
+async function importBackup(file){
+  try{
+    const reader = file.stream().pipeThrough(new TextDecoderStream()).getReader();
+    let buf = "", first = true, n = 0;
+    const handle = async line => {
+      if(!line) return;
+      if(first){ first = false; if(line !== "LKB1") throw new Error("bad"); return; }
+      const o = JSON.parse(line, unJ);
+      if(o.r.d && o.r.d.ct && !(o.r.d.ct instanceof ArrayBuffer)) o.r.d.ct = o.r.d.ct.buffer;
+      for(const k of ["t", "d", "enc", "wrapPw", "wrapRec", "meta"]) if(o.r[k] && o.r[k].ct && !(o.r[k].ct instanceof ArrayBuffer)) o.r[k].ct = o.r[k].ct.buffer;
+      await dbPut(o.s, o.r); n++;
+    };
+    for(;;){
+      const { value, done } = await reader.read(); if(done) break;
+      buf += value; let i; while((i = buf.indexOf("\n")) >= 0){ await handle(buf.slice(0, i)); buf = buf.slice(i + 1); }
+    }
+    await handle(buf);
+    if(S) await reloadVault();
+    toast(n + " चीज़ें वापस आईं");
+  }catch(e){ console.error(e); toast("यह Backup फ़ाइल सही नहीं लगी"); }
+}
+cloudRedirectCheck();
+
+/* ---------------- boot ---------------- */
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){ navigator.serviceWorker.register("sw.js").catch(() => {}); }
+dbp.then(showLock).catch(() => { $("lockbox").innerHTML = "<h1>Locker</h1><p class='sub'>यह ब्राउज़र सुरक्षित भंडारण की अनुमति नहीं दे रहा। Private window बंद करके दोबारा खोलो।</p>"; });
+</script>
+</body>
+</html>

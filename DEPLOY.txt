@@ -1,0 +1,47 @@
+LOCKER — लगाने के कदम (एक बार, लगभग 15 मिनट)
+==============================================
+आपका Firebase project "naregamangment" ही इस्तेमाल होगा। कुछ नया बनाना नहीं है।
+
+1) GitHub पर रखो (मुफ़्त)
+   a. github.com -> New repository -> नाम: locker -> Public -> Create
+   b. "uploading an existing file" दबाओ और इस zip की ये 5 फ़ाइलें डालो:
+      index.html, manifest.json, sw.js, icon-192.png, icon-512.png
+      -> Commit changes
+   c. Settings -> Pages -> Branch: main, Folder: / (root) -> Save
+   d. 1-2 मिनट बाद लिंक बनेगा:  https://आपका-यूज़रनेम.github.io/locker/
+      (code Public है, पर आपकी फ़ोटो और पासवर्ड इसमें कहीं नहीं हैं)
+
+2) Firebase में लिंक की अनुमति दो
+   console.firebase.google.com -> project naregamangment -> Authentication
+   -> Settings -> Authorized domains -> Add domain -> लिखो:  आपका-यूज़रनेम.github.io
+   (Sign-in method में Google पहले से चालू है, NREGA ऐप के लिए)
+
+3) Google Drive चालू करो
+   console.cloud.google.com -> ऊपर वही project "naregamangment" चुनो
+   -> APIs & Services -> Library -> "Google Drive API" खोजो -> Enable
+
+4) Permission जोड़ो
+   उसी Google Cloud में -> APIs & Services -> OAuth consent screen
+   (या "Google Auth platform" -> Data access) -> Add or remove scopes
+   -> ये लिखकर जोड़ो:  https://www.googleapis.com/auth/drive.appdata   -> Save
+   अगर "Publishing status = Testing" दिखे, तो Audience / Test users में अपना Gmail जोड़ दो।
+
+5) फ़ोन में लगाओ
+   Chrome में लिंक खोलो -> तीन बिंदु -> "Add to Home screen"
+   (iPhone: Safari में खोलो -> Share -> Add to Home Screen)
+
+6) Cloud जोड़ो
+   Locker खोलो -> पासवर्ड से vault खोलो -> ऊपर ☁️ दबाओ (या Settings -> Google से जोड़ो)
+   Google का login आएगा और बताएगा "अपना कॉन्फ़िगरेशन डेटा Drive में रखना" -> Allow
+   फिर ☁️ का निशान ✅ बनेगा।
+
+7) दूसरे फ़ोन / laptop पर
+   वही लिंक खोलो -> "☁️ पहले से Locker है? Google से लाओ" -> उसी Google खाते से login
+   -> अपना पासवर्ड डालो -> vault और फ़ोटो आ जाएँगी।
+
+ज़रूरी
+- Google खाते में Passkey / 2-Step Verification चालू करो (myaccount.google.com -> सुरक्षा)।
+- Recovery Key कागज़ पर लिखकर रखो। पासवर्ड और Recovery Key दोनों खो दिए तो फ़ोटो कोई नहीं खोल सकता।
+- Google का login लगभग हर घंटे में दोबारा माँग सकता है। ☁️ पर ⚠️ आए तो उसे दबाकर दोबारा जोड़ दो।
+- iPhone की home-screen वाली ऐप में Google login की pop-up न खुले तो Safari में लिंक खोलकर कर लो।
+- Settings -> "Backup निकालो" से ताले वाली फ़ाइल बना लो, Google खाता कभी बंद हो जाए तो काम आएगी।
